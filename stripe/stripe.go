@@ -1,7 +1,6 @@
 package stripe
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -20,8 +19,8 @@ var (
 	//ErrInvalidHTTPMethod             = errors.New("invalid HTTP Method")
 	//ErrMissingGitLabEventHeader      = errors.New("missing X-Gitlab-Event Header")
 	//ErrGitLabTokenVerificationFailed = errors.New("X-Gitlab-Token validation failed")
-	//ErrEventNotFound                 = errors.New("event not defined to be parsed")
-	//ErrParsingPayload                = errors.New("error parsing payload")
+	ErrEventNotFound  = errors.New("event not defined to be parsed")
+	ErrParsingPayload = errors.New("error parsing payload")
 	//ErrParsingSystemPayload          = errors.New("error parsing system payload")
 	//// ErrHMACVerificationFailed    = errors.New("HMAC verification failed")
 )
@@ -92,22 +91,22 @@ func (hook Webhook) Parse(r *http.Request, events ...Event) (interface{}, error)
 	if len(events) == 0 {
 		return nil, ErrEventNotSpecifiedToParse
 	}
-	if r.Method != http.MethodPost {
-		return nil, ErrInvalidHTTPMethod
-	}
+	//if r.Method != http.MethodPost {
+	//	return nil, ErrInvalidHTTPMethod
+	//}
 
 	// If we have a Secret set, we should check the MAC
-	if len(hook.secret) > 0 {
-		signature := r.Header.Get("X-Gitlab-Token")
-		if signature != hook.secret {
-			return nil, ErrGitLabTokenVerificationFailed
-		}
-	}
+	//if len(hook.secret) > 0 {
+	//	signature := r.Header.Get("X-Gitlab-Token")
+	//	if signature != hook.secret {
+	//		return nil, ErrGitLabTokenVerificationFailed
+	//	}
+	//}
 
 	event := r.Header.Get("X-Gitlab-Event")
-	if len(event) == 0 {
-		return nil, ErrMissingGitLabEventHeader
-	}
+	//if len(event) == 0 {
+	//	return nil, ErrMissingGitLabEventHeader
+	//}
 
 	gitLabEvent := Event(event)
 
@@ -134,86 +133,86 @@ func eventParsing(gitLabEvent Event, events []Event, payload []byte) (interface{
 	}
 
 	switch gitLabEvent {
-	case PushEvents:
-		var pl PushEventPayload
-		err := json.Unmarshal([]byte(payload), &pl)
-		return pl, err
+	//case PushEvents:
+	//	var pl PushEventPayload
+	//	err := json.Unmarshal([]byte(payload), &pl)
+	//	return pl, err
+	//
+	//case TagEvents:
+	//	var pl TagEventPayload
+	//	err := json.Unmarshal([]byte(payload), &pl)
+	//	return pl, err
+	//
+	//case ConfidentialIssuesEvents:
+	//	var pl ConfidentialIssueEventPayload
+	//	err := json.Unmarshal([]byte(payload), &pl)
+	//	return pl, err
+	//
+	//case IssuesEvents:
+	//	var pl IssueEventPayload
+	//	err := json.Unmarshal([]byte(payload), &pl)
+	//	return pl, err
+	//
+	//case CommentEvents:
+	//	var pl CommentEventPayload
+	//	err := json.Unmarshal([]byte(payload), &pl)
+	//	return pl, err
+	//
+	//case MergeRequestEvents:
+	//	var pl MergeRequestEventPayload
+	//	err := json.Unmarshal([]byte(payload), &pl)
+	//	return pl, err
+	//
+	//case WikiPageEvents:
+	//	var pl WikiPageEventPayload
+	//	err := json.Unmarshal([]byte(payload), &pl)
+	//	return pl, err
+	//
+	//case PipelineEvents:
+	//	var pl PipelineEventPayload
+	//	err := json.Unmarshal([]byte(payload), &pl)
+	//	return pl, err
+	//
+	//case BuildEvents:
+	//	var pl BuildEventPayload
+	//	err := json.Unmarshal([]byte(payload), &pl)
+	//	return pl, err
+	//case JobEvents:
+	//	var pl JobEventPayload
+	//	err := json.Unmarshal([]byte(payload), &pl)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	if pl.ObjectKind == objectBuild {
+	//		return eventParsing(BuildEvents, events, payload)
+	//	}
+	//	return pl, nil
 
-	case TagEvents:
-		var pl TagEventPayload
-		err := json.Unmarshal([]byte(payload), &pl)
-		return pl, err
-
-	case ConfidentialIssuesEvents:
-		var pl ConfidentialIssueEventPayload
-		err := json.Unmarshal([]byte(payload), &pl)
-		return pl, err
-
-	case IssuesEvents:
-		var pl IssueEventPayload
-		err := json.Unmarshal([]byte(payload), &pl)
-		return pl, err
-
-	case CommentEvents:
-		var pl CommentEventPayload
-		err := json.Unmarshal([]byte(payload), &pl)
-		return pl, err
-
-	case MergeRequestEvents:
-		var pl MergeRequestEventPayload
-		err := json.Unmarshal([]byte(payload), &pl)
-		return pl, err
-
-	case WikiPageEvents:
-		var pl WikiPageEventPayload
-		err := json.Unmarshal([]byte(payload), &pl)
-		return pl, err
-
-	case PipelineEvents:
-		var pl PipelineEventPayload
-		err := json.Unmarshal([]byte(payload), &pl)
-		return pl, err
-
-	case BuildEvents:
-		var pl BuildEventPayload
-		err := json.Unmarshal([]byte(payload), &pl)
-		return pl, err
-	case JobEvents:
-		var pl JobEventPayload
-		err := json.Unmarshal([]byte(payload), &pl)
-		if err != nil {
-			return nil, err
-		}
-		if pl.ObjectKind == objectBuild {
-			return eventParsing(BuildEvents, events, payload)
-		}
-		return pl, nil
-
-	case SystemHookEvents:
-		var pl SystemHookPayload
-		err := json.Unmarshal([]byte(payload), &pl)
-		if err != nil {
-			return nil, err
-		}
-		switch pl.ObjectKind {
-		case objectPush:
-			return eventParsing(PushEvents, events, payload)
-		case objectTag:
-			return eventParsing(TagEvents, events, payload)
-		case objectMergeRequest:
-			return eventParsing(MergeRequestEvents, events, payload)
-		default:
-			switch pl.EventName {
-			case objectPush:
-				return eventParsing(PushEvents, events, payload)
-			case objectTag:
-				return eventParsing(TagEvents, events, payload)
-			case objectMergeRequest:
-				return eventParsing(MergeRequestEvents, events, payload)
-			default:
-				return nil, fmt.Errorf("unknown system hook event %s", gitLabEvent)
-			}
-		}
+	//case SystemHookEvents:
+	//	var pl SystemHookPayload
+	//	err := json.Unmarshal([]byte(payload), &pl)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	switch pl.ObjectKind {
+	//	case objectPush:
+	//		return eventParsing(PushEvents, events, payload)
+	//	case objectTag:
+	//		return eventParsing(TagEvents, events, payload)
+	//	case objectMergeRequest:
+	//		return eventParsing(MergeRequestEvents, events, payload)
+	//	default:
+	//		switch pl.EventName {
+	//		case objectPush:
+	//			return eventParsing(PushEvents, events, payload)
+	//		case objectTag:
+	//			return eventParsing(TagEvents, events, payload)
+	//		case objectMergeRequest:
+	//			return eventParsing(MergeRequestEvents, events, payload)
+	//		default:
+	//			return nil, fmt.Errorf("unknown system hook event %s", gitLabEvent)
+	//		}
+	//	}
 	default:
 		return nil, fmt.Errorf("unknown event %s", gitLabEvent)
 	}
